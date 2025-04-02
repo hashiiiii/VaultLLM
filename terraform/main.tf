@@ -11,6 +11,7 @@ provider "aws" {
   region = var.aws_region
 }
 
+# TODO: Consider parameterizing CIDR blocks using variables for flexibility.
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
 
@@ -23,7 +24,7 @@ resource "aws_subnet" "public" {
   vpc_id     = aws_vpc.main.id
   cidr_block = "10.0.1.0/24"
 
-  # Availability Zone は variable から取得する想定 (後で追加)
+  # TODO: Explicitly define Availability Zone(s) for resilience and predictability.
   # availability_zone = var.aws_availability_zone
 
   map_public_ip_on_launch = true
@@ -69,25 +70,28 @@ resource "aws_security_group" "allow_ssh_http" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description      = "SSH from anywhere (temporary - restrict ASAP!)"
+    description      = "SSH from specific IP"
     from_port        = 22
     to_port          = 22
     protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"] # WARNING: Restrict this later!
+    # TODO: Update this IP if your IP changes, or manage allowed IPs more dynamically (e.g., variables, data sources, VPN ranges).
+    cidr_blocks      = ["106.139.138.188/32"] # Restricted to your IP
   }
 
   ingress {
-    description      = "Open WebUI from anywhere (temporary - restrict ASAP!)"
+    description      = "Open WebUI from specific IP"
     from_port        = 8080
     to_port          = 8080
     protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"] # WARNING: Restrict this later!
+    # TODO: Update this IP if your IP changes, or manage allowed IPs more dynamically.
+    cidr_blocks      = ["106.139.138.188/32"] # Restricted to your IP
   }
 
   egress {
+    # TODO: CRITICAL - Restrict outbound traffic! Allow only necessary destinations (OS updates, DockerHub, GHCR, Ollama models, etc.) on specific ports (e.g., 443, 53).
     from_port        = 0
     to_port          = 0
-    protocol         = "-1" # Allow all outbound traffic
+    protocol         = "-1" # Allow all outbound traffic - TEMPORARY
     cidr_blocks      = ["0.0.0.0/0"]
   }
 
@@ -98,33 +102,19 @@ resource "aws_security_group" "allow_ssh_http" {
 
 # EC2 Instance
 resource "aws_instance" "main" {
-  ami           = "ami-0c55b159cbfafe1f0" # Amazon Linux 2 AMI (x86_64) in ap-northeast-1 - Verify or find latest
+  # TODO: Periodically check for and update to the latest appropriate Amazon Linux 2 AMI ID for the region.
+  # Consider using a data source for dynamic lookup: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami
+  ami           = "ami-05ec362ff4cffc793" # Amazon Linux 2 AMI (x86_64) in ap-northeast-1
+  # TODO: Select an appropriate instance type based on LLM requirements and cost (t3.micro is likely too small). Consider GPU instances (g4dn, g5) if needed.
   instance_type = "t3.micro"             # Start small, may need bigger for LLMs
 
   subnet_id                   = aws_subnet.public.id
   vpc_security_group_ids      = [aws_security_group.allow_ssh_http.id]
   associate_public_ip_address = true # Needed for internet access via IGW
+  # TODO: Add key_name argument to associate an SSH key pair managed by Terraform (aws_key_pair resource).
 
   # User data script to install Docker and Docker Compose
-  user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              amazon-linux-extras install docker -y
-              systemctl start docker
-              systemctl enable docker
-              usermod -a -G docker ec2-user
-
-              # Install Docker Compose v2
-              DOCKER_CONFIG=$${DOCKER_CONFIG:-/usr/local/lib/docker}
-              mkdir -p $DOCKER_CONFIG/cli-plugins
-              curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
-              chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
-              # Make docker compose executable without full path (optional link)
-              # ln -s $DOCKER_CONFIG/cli-plugins/docker-compose /usr/local/bin/docker-compose
-
-              # Optional: Reboot to apply group changes or logout/login for ec2-user
-              # reboot
-              EOF
+  user_data = file("${path.module}/scripts/user_data.sh")
 
   tags = {
     Name = "vaultllm-ec2-instance"
