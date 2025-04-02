@@ -1,6 +1,9 @@
 # Terraform providers via Git LFS
 terraform/.terraform/providers/**/* filter=lfs diff=lfs merge=lfs -text
-*.tf !text !filter !merge !diff
-*.yml !text !filter !merge !diff
-.cursor/rules/* !text !filter !merge !diff
+
+# Explicitly mark these files as text
+*.tf text
+*.yml text
+*.hcl text
+.cursor/rules/* text
 terraform/.terraform.lock.hcl !text !filter !merge !diff
