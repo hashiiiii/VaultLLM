@@ -1,3 +1,28 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:80aeafe642d663934467f0aa89b32ac390d2457d3cf24a0dcff87f0fce4990f3
-size 392
+# Terraform files
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfplan
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Docker
+# If you store docker-related build artifacts or data locally outside of named volumes
+# docker-data/
+
+# IDE / Editor files
+.idea/
+.vscode/
+*.swp
+
+# OS generated files
+.DS_Store
+Thumbs.db 
