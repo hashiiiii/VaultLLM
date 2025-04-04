@@ -197,4 +197,45 @@ resource "aws_vpc_endpoint" "s3" {
   tags = {
     Name = "vaultllm-vpc-endpoint-s3-gateway"
   }
+}
+
+# --- Security Group for ALB ---
+resource "aws_security_group" "alb_sg" {
+  name        = "${var.project_name}-alb-sg"
+  description = "Allow HTTP/HTTPS inbound traffic to ALB and allow outbound to tasks"
+  vpc_id      = aws_vpc.main.id # Use the existing VPC ID
+
+  ingress {
+    description = "Allow HTTP from anywhere"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  ingress {
+    description = "Allow HTTPS from anywhere"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  # Allow all outbound traffic by default.
+  # A more restrictive rule could allow traffic only to the ECS task security group on the required port (e.g., 8080).
+  # However, this would require passing the ECS task SG ID to this module or using a less specific CIDR block rule.
+  # For now, allow all outbound.
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1" # Allow all protocols
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-alb-sg"
+  }
 } 

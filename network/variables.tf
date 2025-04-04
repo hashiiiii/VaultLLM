@@ -26,4 +26,10 @@ variable "public_subnet_cidrs" {
   type        = list(string)
   # Ensure the number of CIDRs matches the number of AZs
   default     = ["10.0.1.0/24"]
+}
+
+variable "project_name" {
+  description = "Base name for resources to ensure uniqueness"
+  type        = string
+  default     = "vaultllm"
 } 

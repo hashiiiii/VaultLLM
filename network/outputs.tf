@@ -16,4 +16,9 @@ output "public_subnet_ids" {
 output "vpc_endpoint_sg_id" {
   description = "The ID of the security group for VPC endpoints"
   value       = aws_security_group.vpc_endpoint_sg.id
+}
+
+output "alb_security_group_id" {
+  description = "The ID of the security group for the Application Load Balancer"
+  value       = aws_security_group.alb_sg.id
 } 
