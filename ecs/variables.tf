@@ -109,11 +109,11 @@ variable "log_group_name" {
 variable "desired_count" {
   description = "Desired number of tasks for the ECS service"
   type        = number
-  default     = 0 # Default to 0 (stopped)
+  default     = 0 # Default back to 0 (stopped)
 }
 
 variable "assign_public_ip" {
   description = "Whether to assign public IPs to Fargate tasks"
   type        = bool
-  default     = true # Set to false if using ALB exclusively later
+  default     = false # Default to false now that we use an ALB
 } 

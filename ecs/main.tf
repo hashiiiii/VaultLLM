@@ -178,6 +178,82 @@ resource "aws_ecs_task_definition" "main" {
   }
 }
 
+# --- Application Load Balancer (ALB) ---
+
+resource "aws_lb" "main" {
+  name               = "${var.project_name}-alb"
+  internal           = false # Internet-facing
+  load_balancer_type = "application"
+  security_groups    = [data.terraform_remote_state.network.outputs.alb_security_group_id]
+  subnets            = data.terraform_remote_state.network.outputs.public_subnet_ids # Place ALB in public subnets
+
+  # Enable access logs (optional but recommended)
+  # access_logs {
+  #   bucket  = aws_s3_bucket.lb_logs.bucket
+  #   prefix  = "${var.project_name}-lb-logs"
+  #   enabled = true
+  # }
+
+  tags = {
+    Name = "${var.project_name}-alb"
+  }
+}
+
+# --- Target Group ---
+
+resource "aws_lb_target_group" "webui" {
+  name        = "${var.project_name}-webui-tg"
+  port        = var.webui_container_port # Target port on the container
+  protocol    = "HTTP"                  # Protocol between ALB and container
+  target_type = "ip"                    # Required for Fargate
+  vpc_id      = data.terraform_remote_state.network.outputs.vpc_id
+
+  health_check {
+    enabled             = true
+    path                = "/" # Adjust to a specific health check endpoint if available (e.g., /health)
+    port                = "traffic-port" # Use the target group port
+    protocol            = "HTTP"
+    matcher             = "200-399" # Expect a successful HTTP response
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+  }
+
+  tags = {
+    Name = "${var.project_name}-webui-tg"
+  }
+}
+
+# --- Listener for HTTP ---
+# Redirects HTTP traffic to HTTPS once HTTPS listener is set up.
+# For now, forwards HTTP directly to the target group.
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.webui.arn
+  }
+}
+
+# --- Listener for HTTPS (Requires Certificate) ---
+# TODO: Add HTTPS listener after obtaining an ACM certificate
+# resource "aws_lb_listener" "https" {
+#   load_balancer_arn = aws_lb.main.arn
+#   port              = 443
+#   protocol          = "HTTPS"
+#   ssl_policy        = "ELBSecurityPolicy-2016-08" # Choose an appropriate policy
+#   certificate_arn   = var.acm_certificate_arn # Pass certificate ARN as variable
+#
+#   default_action {
+#     type             = "forward"
+#     target_group_arn = aws_lb_target_group.webui.arn
+#   }
+# }
+
 # --- Security Group for ECS Tasks ---
 resource "aws_security_group" "ecs_task_sg" {
   name        = "${var.project_name}-ecs-task-sg"
@@ -185,12 +261,13 @@ resource "aws_security_group" "ecs_task_sg" {
   vpc_id      = data.terraform_remote_state.network.outputs.vpc_id
 
   ingress {
-    description = "Allow inbound to Open WebUI (Placeholder - restrict to ALB SG later)"
+    description = "Allow inbound from ALB to Open WebUI"
     from_port   = var.webui_container_port
     to_port     = var.webui_container_port
     protocol    = "tcp"
     # TODO: Restrict this to the ALB security group ID once the ALB is created.
-    cidr_blocks = ["0.0.0.0/0"] # TEMPORARY: Allows direct access if assign_public_ip=true
+    # cidr_blocks = ["0.0.0.0/0"] # TEMPORARY: Allows direct access if assign_public_ip=true
+    security_groups = [data.terraform_remote_state.network.outputs.alb_security_group_id]
   }
 
   # Allow outbound traffic
@@ -237,22 +314,23 @@ resource "aws_ecs_service" "main" {
 
   # Network configuration for Fargate tasks
   network_configuration {
-    subnets         = data.terraform_remote_state.network.outputs.public_subnet_ids # Use the list of public subnet IDs from the network module
-    security_groups = [aws_security_group.ecs_task_sg.id]  # Attach the task security group
-    assign_public_ip = var.assign_public_ip # Control public IP assignment via variable
+    subnets         = data.terraform_remote_state.network.outputs.public_subnet_ids
+    security_groups = [aws_security_group.ecs_task_sg.id]
+    assign_public_ip = false # ALB provides the public access point
   }
 
-  # Optional: Load Balancer configuration (will add later)
-  # load_balancer {
-  #   target_group_arn = aws_lb_target_group.main.arn
-  #   container_name   = "open-webui"
-  #   container_port   = 8080
-  # }
+  # Load Balancer configuration
+  load_balancer {
+    target_group_arn = aws_lb_target_group.webui.arn
+    container_name   = var.webui_container_name
+    container_port   = var.webui_container_port
+  }
 
-  # Ensure service waits for dependencies like IAM roles
+  # Ensure service waits for dependencies like IAM roles and the ALB listener
   depends_on = [
     aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
-    # Add ALB listener rule dependency here if using ALB
+    aws_lb_listener.http, # Wait for the HTTP listener to be ready
+    # aws_lb_listener.https, # Add this if using HTTPS listener
   ]
 
   tags = {

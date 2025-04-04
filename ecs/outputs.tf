@@ -21,4 +21,9 @@ output "ecs_task_security_group_id" {
 output "cloudwatch_log_group_name" {
   description = "The name of the CloudWatch log group for tasks"
   value       = aws_cloudwatch_log_group.ecs_task_logs.name
+}
+
+output "alb_dns_name" {
+  description = "The DNS name of the Application Load Balancer"
+  value       = aws_lb.main.dns_name
 } 
