@@ -12,19 +12,27 @@ provider "aws" {
 }
 
 # Define module dependency on network
-module "network" {
-  source = "../network" # Path to the network module
+# module "network" {
+#  source = "../network" # Path to the network module
+#
+#  # Pass variables if the network module needs them
+#  # aws_region = var.aws_region
+#}
 
-  # Pass variables if the network module needs them
-  # aws_region = var.aws_region
+data "terraform_remote_state" "network" {
+  backend = "local"
+
+  config = {
+    path = "../network/terraform.tfstate"
+  }
 }
 
 # --- ECS Cluster ---
 resource "aws_ecs_cluster" "main" {
-  name = "vaultllm-ecs-cluster"
+  name = "${var.project_name}-${var.ecs_cluster_name}"
 
   tags = {
-    Name = "vaultllm-ecs-cluster"
+    Name = "${var.project_name}-${var.ecs_cluster_name}"
   }
 }
 
@@ -36,7 +44,7 @@ resource "aws_iam_service_linked_role" "ecs" {
 
 # --- IAM Role for ECS Task Execution ---
 resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "vaultllm-ecs-task-execution-role"
+  name = "${var.project_name}-ecs-task-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -52,7 +60,7 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   })
 
   tags = {
-    Name = "vaultllm-ecs-task-execution-role"
+    Name = "${var.project_name}-ecs-task-execution-role"
   }
 }
 
@@ -64,54 +72,53 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
 # --- CloudWatch Log Group ---
 # Log group for ECS tasks
 resource "aws_cloudwatch_log_group" "ecs_task_logs" {
-  name = "/ecs/vaultllm-task"
+  name = "${var.project_name}${var.log_group_name}"
 
   tags = {
-    Name = "vaultllm-ecs-task-log-group"
+    Name = "${var.project_name}-ecs-task-log-group"
   }
 }
 
 # --- ECS Task Definition ---
 resource "aws_ecs_task_definition" "main" {
-  family                   = "vaultllm-task"
+  family                   = "${var.project_name}-${var.ecs_task_family}"
   network_mode             = "awsvpc" # Required for Fargate
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "1024" # 1 vCPU unit
-  memory                   = "2048" # 2GB MiB - Adjust as needed for Ollama models
+  cpu                      = var.ecs_task_cpu
+  memory                   = var.ecs_task_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   # task_role_arn = aws_iam_role.ecs_task_role.arn # Add if a task role is needed later
 
   # Define volumes like in docker-compose.yml
   # Using Fargate-managed ephemeral storage initially. Mount EFS later for persistence.
   volume {
-    name = "ollama_data"
+    name = var.ollama_volume_name
     # No host path specified for Fargate managed volume
   }
   volume {
-    name = "open_webui_data"
+    name = var.webui_volume_name
     # No host path specified for Fargate managed volume
   }
 
   # Container Definitions (JSON format)
   container_definitions = jsonencode([
     {
-      name      = "ollama"
-      image     = "ollama/ollama"
+      name      = var.ollama_container_name
+      image     = var.ollama_image
       essential = true
-      # Port mapping needed if accessing Ollama API directly, but primarily for WebUI comms
       portMappings = [
         {
-          containerPort = 11434
-          hostPort      = 11434 # Optional in awsvpc, but good practice
+          containerPort = var.ollama_container_port
+          hostPort      = var.ollama_container_port # Optional in awsvpc, but good practice
           protocol      = "tcp"
-          name          = "ollama-11434-tcp"
+          name          = "${var.ollama_container_name}-${var.ollama_container_port}-tcp"
           appProtocol   = "http"
         }
       ]
       mountPoints = [
         {
-          sourceVolume  = "ollama_data"
-          containerPath = "/root/.ollama"
+          sourceVolume  = var.ollama_volume_name
+          containerPath = var.ollama_volume_path
           readOnly      = false
         }
       ]
@@ -120,38 +127,38 @@ resource "aws_ecs_task_definition" "main" {
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.ecs_task_logs.name
           "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "ollama"
+          "awslogs-stream-prefix" = var.ollama_container_name
         }
       }
       # Health check could be added later
     },
     {
-      name      = "open-webui"
-      image     = "ghcr.io/open-webui/open-webui:main"
+      name      = var.webui_container_name
+      image     = var.webui_image
       essential = true
       portMappings = [
         {
-          containerPort = 8080
-          hostPort      = 8080 # Optional in awsvpc
+          containerPort = var.webui_container_port
+          hostPort      = var.webui_container_port # Optional in awsvpc
           protocol      = "tcp"
-          name          = "webui-8080-tcp"
+          name          = "${var.webui_container_name}-${var.webui_container_port}-tcp"
           appProtocol   = "http"
         }
       ]
       environment = [
         # Use localhost for communication within the same task in awsvpc mode
-        { name = "OLLAMA_BASE_URL", value = "http://localhost:11434" }
+        { name = "OLLAMA_BASE_URL", value = "http://localhost:${var.ollama_container_port}" }
       ]
       mountPoints = [
         {
-          sourceVolume  = "open_webui_data"
-          containerPath = "/app/backend/data"
+          sourceVolume  = var.webui_volume_name
+          containerPath = var.webui_volume_path
           readOnly      = false
         }
       ]
       dependsOn = [
         {
-          containerName = "ollama"
+          containerName = var.ollama_container_name
           condition     = "START" # Wait for ollama to start (or HEALTHY if health check defined)
         }
       ]
@@ -160,85 +167,79 @@ resource "aws_ecs_task_definition" "main" {
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.ecs_task_logs.name
           "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "open-webui"
+          "awslogs-stream-prefix" = var.webui_container_name
         }
       }
     }
   ])
 
   tags = {
-    Name = "vaultllm-ecs-task-definition"
+    Name = "${var.project_name}-${var.ecs_task_family}-definition"
   }
 }
 
 # --- Security Group for ECS Tasks ---
 resource "aws_security_group" "ecs_task_sg" {
-  name        = "vaultllm-ecs-task-sg"
-  description = "Allow inbound traffic to ECS tasks (e.g., from ALB or specific IPs)"
-  vpc_id      = module.network.vpc_id
+  name        = "${var.project_name}-ecs-task-sg"
+  description = "Allow inbound traffic to ECS tasks and controlled outbound traffic"
+  vpc_id      = data.terraform_remote_state.network.outputs.vpc_id
 
   ingress {
-    description = "Allow Open WebUI (placeholder - will be ALB later)"
-    from_port   = 8080
-    to_port     = 8080
+    description = "Allow inbound to Open WebUI (Placeholder - restrict to ALB SG later)"
+    from_port   = var.webui_container_port
+    to_port     = var.webui_container_port
     protocol    = "tcp"
-    # TODO: Restrict this to the ALB security group once created
-    cidr_blocks = ["0.0.0.0/0"] # TEMPORARY: Allow from anywhere initially
+    # TODO: Restrict this to the ALB security group ID once the ALB is created.
+    cidr_blocks = ["0.0.0.0/0"] # TEMPORARY: Allows direct access if assign_public_ip=true
   }
 
-  # Restrict outbound traffic
+  # Allow outbound traffic
   egress {
-    description     = "Allow HTTPS to VPC Endpoint SG for SSM (if needed by agent inside task)"
+    description     = "Allow HTTPS to VPC Endpoint SG (SSM, ECR, Logs)"
     from_port       = 443
     to_port         = 443
     protocol        = "tcp"
-    security_groups = [module.network.vpc_endpoint_sg_id]
+    security_groups = [data.terraform_remote_state.network.outputs.vpc_endpoint_sg_id]
   }
 
   egress {
-    description = "Allow DNS (UDP 53) within VPC"
+    description = "Allow DNS (UDP 53) within VPC for service discovery and endpoint resolution"
     from_port   = 53
     to_port     = 53
     protocol    = "udp"
-    cidr_blocks = [module.network.vpc_cidr_block]
+    cidr_blocks = [data.terraform_remote_state.network.outputs.vpc_cidr_block]
   }
 
   egress {
-    description = "Allow outbound HTTPS for image pulls (DockerHub, GHCR, etc.)"
+    description = "Allow outbound HTTPS to external services (e.g., DockerHub, GHCR for image pulls)"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["0.0.0.0/0"] # Required for pulling images from external registries.
+                                # Consider removing/restricting if all images are in ECR.
   }
 
-  # TODO: Add egress rules for OS updates (if needed), DockerHub, Ollama model downloads etc.
-  # Example for ECR/S3 Interface endpoints (often needed by task execution role)
-  # egress {
-  #   description = "Allow HTTPS to VPC Endpoint SG for ECR/S3"
-  #   from_port   = 443
-  #   to_port     = 443
-  #   protocol    = "tcp"
-  #   security_groups = [module.network.vpc_endpoint_sg_id] # Assuming ECR/S3 endpoints use the same SG
-  # }
+  # Note: Removed TODOs and commented-out rules as existing rules cover required access
+  # via VPC endpoints and external HTTPS.
 
   tags = {
-    Name = "vaultllm-ecs-task-sg"
+    Name = "${var.project_name}-ecs-task-sg"
   }
 }
 
 # --- ECS Service ---
 resource "aws_ecs_service" "main" {
-  name            = "vaultllm-service"
+  name            = "${var.project_name}-${var.ecs_service_name}"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.main.arn
-  desired_count   = 1 # Start with one task
+  desired_count   = var.desired_count
   launch_type     = "FARGATE"
 
   # Network configuration for Fargate tasks
   network_configuration {
-    subnets         = [module.network.public_subnet_id] # Run tasks in the public subnet
+    subnets         = data.terraform_remote_state.network.outputs.public_subnet_ids # Use the list of public subnet IDs from the network module
     security_groups = [aws_security_group.ecs_task_sg.id]  # Attach the task security group
-    assign_public_ip = true # Assign public IP to the task ENI for direct access (or ALB access later)
+    assign_public_ip = var.assign_public_ip # Control public IP assignment via variable
   }
 
   # Optional: Load Balancer configuration (will add later)
@@ -248,11 +249,14 @@ resource "aws_ecs_service" "main" {
   #   container_port   = 8080
   # }
 
-  # Ensure service waits for dependencies like IAM roles if needed, though usually implicit
-  # depends_on = [aws_iam_role_policy_attachment.ecs_task_execution_role_policy]
+  # Ensure service waits for dependencies like IAM roles
+  depends_on = [
+    aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
+    # Add ALB listener rule dependency here if using ALB
+  ]
 
   tags = {
-    Name = "vaultllm-ecs-service"
+    Name = "${var.project_name}-${var.ecs_service_name}"
   }
 }
 
