@@ -134,4 +134,62 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   tags = {
     Name = "vaultllm-vpc-endpoint-ssmmessages"
   }
+}
+
+# --- VPC Endpoints for ECR ---
+
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.ecr.dkr"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [aws_subnet.public.id] # For simplicity, use public subnet. Consider private subnets for production.
+  security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
+  private_dns_enabled = true
+
+  tags = {
+    Name = "vaultllm-vpc-endpoint-ecr-dkr"
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.ecr.api"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [aws_subnet.public.id] # For simplicity, use public subnet. Consider private subnets for production.
+  security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
+  private_dns_enabled = true
+
+  tags = {
+    Name = "vaultllm-vpc-endpoint-ecr-api"
+  }
+}
+
+# --- VPC Endpoint for CloudWatch Logs ---
+
+resource "aws_vpc_endpoint" "logs" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.logs"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [aws_subnet.public.id] # For simplicity, use public subnet. Consider private subnets for production.
+  security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
+  private_dns_enabled = true
+
+  tags = {
+    Name = "vaultllm-vpc-endpoint-logs"
+  }
+}
+
+# --- VPC Endpoint for S3 (Gateway) ---
+
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+
+  # Associate with the route table(s) where tasks/instances reside
+  route_table_ids = [aws_route_table.public.id] # If using private subnets, add their route table IDs too
+
+  tags = {
+    Name = "vaultllm-vpc-endpoint-s3-gateway"
+  }
 } 
