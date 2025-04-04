@@ -13,7 +13,7 @@ provider "aws" {
 
 # TODO: Consider parameterizing CIDR blocks using variables for flexibility.
 resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
+  cidr_block           = var.vpc_cidr
   enable_dns_support   = true # Required for VPC Endpoints private DNS
   enable_dns_hostnames = true # Required for VPC Endpoints private DNS
 
@@ -23,8 +23,11 @@ resource "aws_vpc" "main" {
 }
 
 resource "aws_subnet" "public" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.1.0/24"
+  count = length(var.availability_zones)
+
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.public_subnet_cidrs[count.index]
+  availability_zone = var.availability_zones[count.index]
 
   # TODO: Explicitly define Availability Zone(s) for resilience and predictability.
   # availability_zone = var.aws_availability_zone
@@ -32,7 +35,7 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "vaultllm-public-subnet"
+    Name = "vaultllm-public-subnet-${var.availability_zones[count.index]}"
   }
 }
 
@@ -61,7 +64,9 @@ resource "aws_route_table" "public" {
 
 # Route Table Association for the public subnet
 resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.public.id
+  count = length(var.availability_zones)
+
+  subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }
 
@@ -99,7 +104,7 @@ resource "aws_vpc_endpoint" "ssm" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${var.aws_region}.ssm"
   vpc_endpoint_type = "Interface"
-  subnet_ids        = [aws_subnet.public.id]
+  subnet_ids        = aws_subnet.public[*].id
   security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
   private_dns_enabled = true
 
@@ -113,7 +118,7 @@ resource "aws_vpc_endpoint" "ec2messages" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${var.aws_region}.ec2messages"
   vpc_endpoint_type = "Interface"
-  subnet_ids        = [aws_subnet.public.id]
+  subnet_ids        = aws_subnet.public[*].id
   security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
   private_dns_enabled = true
 
@@ -127,7 +132,7 @@ resource "aws_vpc_endpoint" "ssmmessages" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${var.aws_region}.ssmmessages"
   vpc_endpoint_type = "Interface"
-  subnet_ids        = [aws_subnet.public.id]
+  subnet_ids        = aws_subnet.public[*].id
   security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
   private_dns_enabled = true
 
@@ -142,7 +147,7 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${var.aws_region}.ecr.dkr"
   vpc_endpoint_type = "Interface"
-  subnet_ids        = [aws_subnet.public.id] # For simplicity, use public subnet. Consider private subnets for production.
+  subnet_ids        = aws_subnet.public[*].id # For simplicity, use public subnet. Consider private subnets for production.
   security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
   private_dns_enabled = true
 
@@ -155,7 +160,7 @@ resource "aws_vpc_endpoint" "ecr_api" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${var.aws_region}.ecr.api"
   vpc_endpoint_type = "Interface"
-  subnet_ids        = [aws_subnet.public.id] # For simplicity, use public subnet. Consider private subnets for production.
+  subnet_ids        = aws_subnet.public[*].id # For simplicity, use public subnet. Consider private subnets for production.
   security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
   private_dns_enabled = true
 
@@ -170,7 +175,7 @@ resource "aws_vpc_endpoint" "logs" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${var.aws_region}.logs"
   vpc_endpoint_type = "Interface"
-  subnet_ids        = [aws_subnet.public.id] # For simplicity, use public subnet. Consider private subnets for production.
+  subnet_ids        = aws_subnet.public[*].id # For simplicity, use public subnet. Consider private subnets for production.
   security_group_ids = [aws_security_group.vpc_endpoint_sg.id]
   private_dns_enabled = true
 
