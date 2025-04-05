@@ -1,15 +1,15 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.aws_region
-}
+//terraform {
+//  required_providers {
+//    aws = {
+//      source  = "hashicorp/aws"
+//      version = "~> 5.0"
+//    }
+//  }
+//}
+//
+//provider "aws" {
+//  region = var.aws_region
+//}
 
 # TODO: Consider parameterizing CIDR blocks using variables for flexibility.
 resource "aws_vpc" "main" {
@@ -223,19 +223,29 @@ resource "aws_security_group" "alb_sg" {
     ipv6_cidr_blocks = ["::/0"]
   }
 
-  # Allow all outbound traffic by default.
-  # A more restrictive rule could allow traffic only to the ECS task security group on the required port (e.g., 8080).
-  # However, this would require passing the ECS task SG ID to this module or using a less specific CIDR block rule.
-  # For now, allow all outbound.
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1" # Allow all protocols
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
+  # Egress rule will be defined separately using aws_security_group_rule
 
   tags = {
     Name = "${var.project_name}-alb-sg"
+  }
+}
+
+# --- Application Load Balancer (ALB) ---
+resource "aws_lb" "main" {
+  name               = "${var.project_name}-alb"
+  internal           = false # Internet-facing
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb_sg.id] # Directly reference the SG defined in this module
+  subnets            = aws_subnet.public[*].id      # Directly reference the subnets defined in this module
+
+  # Enable access logs (optional but recommended)
+  # access_logs {
+  #   bucket  = aws_s3_bucket.lb_logs.bucket # Need to define S3 bucket for logs if enabling
+  #   prefix  = "${var.project_name}-lb-logs"
+  #   enabled = true
+  # }
+
+  tags = {
+    Name = "${var.project_name}-alb"
   }
 } 

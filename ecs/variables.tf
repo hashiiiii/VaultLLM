@@ -116,4 +116,29 @@ variable "assign_public_ip" {
   description = "Whether to assign public IPs to Fargate tasks"
   type        = bool
   default     = false # Default to false now that we use an ALB
+}
+
+variable "vpc_id" {
+  description = "ID of the VPC where ECS resources will be deployed"
+  type        = string
+}
+
+variable "vpc_cidr_block" {
+  description = "CIDR block of the VPC"
+  type        = string
+}
+
+variable "public_subnet_ids" {
+  description = "List of public subnet IDs for ECS tasks and ALB"
+  type        = list(string)
+}
+
+variable "vpc_endpoint_sg_id" {
+  description = "ID of the security group for VPC endpoints, used in ECS task egress rules"
+  type        = string
+}
+
+variable "load_balancer_arn" {
+  description = "ARN of the Application Load Balancer for listener configuration"
+  type        = string
 } 

@@ -1,16 +1,3 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.aws_region
-}
-
 # Define module dependency on network
 # module "network" {
 #  source = "../network" # Path to the network module
@@ -18,14 +5,6 @@ provider "aws" {
 #  # Pass variables if the network module needs them
 #  # aws_region = var.aws_region
 #}
-
-data "terraform_remote_state" "network" {
-  backend = "local"
-
-  config = {
-    path = "../network/terraform.tfstate"
-  }
-}
 
 # --- ECS Cluster ---
 resource "aws_ecs_cluster" "main" {
@@ -178,27 +157,6 @@ resource "aws_ecs_task_definition" "main" {
   }
 }
 
-# --- Application Load Balancer (ALB) ---
-
-resource "aws_lb" "main" {
-  name               = "${var.project_name}-alb"
-  internal           = false # Internet-facing
-  load_balancer_type = "application"
-  security_groups    = [data.terraform_remote_state.network.outputs.alb_security_group_id]
-  subnets            = data.terraform_remote_state.network.outputs.public_subnet_ids # Place ALB in public subnets
-
-  # Enable access logs (optional but recommended)
-  # access_logs {
-  #   bucket  = aws_s3_bucket.lb_logs.bucket
-  #   prefix  = "${var.project_name}-lb-logs"
-  #   enabled = true
-  # }
-
-  tags = {
-    Name = "${var.project_name}-alb"
-  }
-}
-
 # --- Target Group ---
 
 resource "aws_lb_target_group" "webui" {
@@ -206,7 +164,7 @@ resource "aws_lb_target_group" "webui" {
   port        = var.webui_container_port # Target port on the container
   protocol    = "HTTP"                  # Protocol between ALB and container
   target_type = "ip"                    # Required for Fargate
-  vpc_id      = data.terraform_remote_state.network.outputs.vpc_id
+  vpc_id      = var.vpc_id
 
   health_check {
     enabled             = true
@@ -229,7 +187,7 @@ resource "aws_lb_target_group" "webui" {
 # Redirects HTTP traffic to HTTPS once HTTPS listener is set up.
 # For now, forwards HTTP directly to the target group.
 resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.main.arn
+  load_balancer_arn = var.load_balancer_arn
   port              = 80
   protocol          = "HTTP"
 
@@ -242,7 +200,7 @@ resource "aws_lb_listener" "http" {
 # --- Listener for HTTPS (Requires Certificate) ---
 # TODO: Add HTTPS listener after obtaining an ACM certificate
 # resource "aws_lb_listener" "https" {
-#   load_balancer_arn = aws_lb.main.arn
+#   load_balancer_arn = var.load_balancer_arn
 #   port              = 443
 #   protocol          = "HTTPS"
 #   ssl_policy        = "ELBSecurityPolicy-2016-08" # Choose an appropriate policy
@@ -258,17 +216,9 @@ resource "aws_lb_listener" "http" {
 resource "aws_security_group" "ecs_task_sg" {
   name        = "${var.project_name}-ecs-task-sg"
   description = "Allow inbound traffic to ECS tasks and controlled outbound traffic"
-  vpc_id      = data.terraform_remote_state.network.outputs.vpc_id
+  vpc_id      = var.vpc_id
 
-  ingress {
-    description = "Allow inbound from ALB to Open WebUI"
-    from_port   = var.webui_container_port
-    to_port     = var.webui_container_port
-    protocol    = "tcp"
-    # TODO: Restrict this to the ALB security group ID once the ALB is created.
-    # cidr_blocks = ["0.0.0.0/0"] # TEMPORARY: Allows direct access if assign_public_ip=true
-    security_groups = [data.terraform_remote_state.network.outputs.alb_security_group_id]
-  }
+  # Ingress rule will be defined separately using aws_security_group_rule
 
   # Allow outbound traffic
   egress {
@@ -276,7 +226,7 @@ resource "aws_security_group" "ecs_task_sg" {
     from_port       = 443
     to_port         = 443
     protocol        = "tcp"
-    security_groups = [data.terraform_remote_state.network.outputs.vpc_endpoint_sg_id]
+    security_groups = [var.vpc_endpoint_sg_id]
   }
 
   egress {
@@ -284,7 +234,7 @@ resource "aws_security_group" "ecs_task_sg" {
     from_port   = 53
     to_port     = 53
     protocol    = "udp"
-    cidr_blocks = [data.terraform_remote_state.network.outputs.vpc_cidr_block]
+    cidr_blocks = [var.vpc_cidr_block]
   }
 
   egress {
@@ -314,7 +264,7 @@ resource "aws_ecs_service" "main" {
 
   # Network configuration for Fargate tasks
   network_configuration {
-    subnets         = data.terraform_remote_state.network.outputs.public_subnet_ids
+    subnets         = var.public_subnet_ids
     security_groups = [aws_security_group.ecs_task_sg.id]
     assign_public_ip = false # ALB provides the public access point
   }
