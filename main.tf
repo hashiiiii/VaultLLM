@@ -5,11 +5,26 @@ terraform {
       version = "~> 5.0"
     }
   }
-  # backend "local" {} # Assuming local backend for now, configure if needed
+  backend "s3" {
+    bucket         = "vaultllm-tfstate-619416722781-ap-northeast-1"
+    key            = "vaultllm/root/terraform.tfstate"
+    region         = "ap-northeast-1"
+    dynamodb_table = "vaultllm-tfstate-lock"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
   region = var.aws_region
+  allowed_account_ids = [local.aws_accounts.vaultllm]
+
+  default_tags {
+    tags = {
+      Project     = var.project_name
+      Environment = var.environment
+      ManagedBy   = "Terraform"
+    }
+  }
 }
 
 # Module calls will be added later 
