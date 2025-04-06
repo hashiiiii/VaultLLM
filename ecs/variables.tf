@@ -1,13 +1,11 @@
 variable "aws_region" {
   description = "AWS region to deploy resources"
   type        = string
-  default     = "ap-northeast-1" # Tokyo
 }
 
 variable "project_name" {
   description = "Base name for resources to ensure uniqueness"
   type        = string
-  default     = "vaultllm"
 }
 
 variable "ecs_cluster_name" {
@@ -85,7 +83,6 @@ variable "webui_image" {
 variable "webui_container_port" {
   description = "Container port for Open WebUI"
   type        = number
-  default     = 8080
 }
 
 variable "webui_volume_name" {
