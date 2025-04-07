@@ -48,33 +48,6 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# Security Group for VPC Endpoints (Allow HTTPS from VPC)
-resource "aws_security_group" "vpc_endpoint_sg" {
-  name        = "vaultllm-vpc-endpoint-sg"
-  description = "Allow HTTPS traffic from within the VPC for endpoints"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description = "Allow HTTPS from VPC CIDR"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = [aws_vpc.main.cidr_block]
-  }
-
-  # Egress is typically allowed by default, but can be restricted if needed.
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "vaultllm-vpc-endpoint-sg"
-  }
-}
-
 resource "aws_vpc_endpoint" "ssmmessages" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.ssmmessages"
@@ -139,6 +112,31 @@ resource "aws_vpc_endpoint" "s3" {
   }
 }
 
+resource "aws_security_group" "vpc_endpoint_sg" {
+  name        = "vaultllm-vpc-endpoint-sg"
+  description = "Allow HTTPS traffic from within the VPC for endpoints"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "Allow HTTPS from VPC CIDR"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "vaultllm-vpc-endpoint-sg"
+  }
+}
+
 resource "aws_security_group" "alb_sg" {
   name        = "${var.project_name}-alb-sg"
   description = "Allow HTTP/HTTPS inbound traffic to ALB and allow outbound to tasks"
@@ -161,6 +159,11 @@ resource "aws_security_group" "alb_sg" {
     cidr_blocks      = ["0.0.0.0/0"]
     ipv6_cidr_blocks = ["::/0"]
   }
+
+  # Note: Egress rules for this security group (e.g., allowing traffic to ECS tasks)
+  # are defined separately in the root main.tf file using the aws_security_group_rule resource
+  # to avoid circular dependencies between modules.
+  # The default behavior without explicit egress rules is allow all outbound.
 
   tags = {
     Name = "${var.project_name}-alb-sg"
