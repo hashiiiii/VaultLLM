@@ -1,3 +1,12 @@
+# TODO: HTTPS Configuration Required
+# This configuration currently only supports HTTP.
+# To enable HTTPS, the following steps are needed after domain transfer is complete:
+# 1. Define variables for domain_name and route53_zone_id in variables.tf.
+# 2. Add resources for ACM certificate creation and validation using Route 53 DNS.
+# 3. Add a Route 53 Alias record pointing the domain name to the ALB.
+# 4. Pass the validated certificate ARN to the ECS module.
+# 5. Update the ECS module to remove the HTTP listener and add an HTTPS listener using the certificate.
+
 terraform {
   required_providers {
     aws = {

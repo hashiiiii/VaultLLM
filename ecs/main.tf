@@ -158,6 +158,10 @@ resource "aws_lb_target_group" "webui" {
   }
 }
 
+# --- Listener for HTTP ---
+# TODO: Replace this HTTP listener with an HTTPS listener (Port 443)
+#       once a domain name and ACM certificate are configured.
+#       Alternatively, change this listener to redirect HTTP to HTTPS.
 resource "aws_lb_listener" "http" {
   load_balancer_arn = var.alb_arn
   port              = 80
