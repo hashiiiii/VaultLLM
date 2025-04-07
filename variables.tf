@@ -25,7 +25,7 @@ variable "vpc_cidr" {
 variable "availability_zones" {
   description = "A list of Availability Zones to use for the subnets."
   type        = list(string)
-  default     = ["ap-northeast-1a", "ap-northeast-1c", "ap-northeast-1d"]
+  default     = ["ap-northeast-1a", "ap-northeast-1c"]
 }
 
 variable "target_account_id" {
@@ -40,4 +40,38 @@ variable "webui_container_port" {
   default     = 8080
 }
 
-# Add other common variables if needed, e.g., tags
+variable "ecs_task_cpu" {
+  description = "CPU units for the ECS task (e.g., 1024 for 1 vCPU)"
+  type        = string
+  default     = "1024"
+}
+
+variable "ecs_task_memory" {
+  description = "Memory (MiB) for the ECS task (e.g., 2048 for 2GB)"
+  type        = string
+  default     = "2048"
+}
+
+variable "ollama_image" {
+  description = "Docker image for Ollama (e.g., ollama/ollama:latest or ECR path)"
+  type        = string
+  default     = "ollama/ollama:latest"
+}
+
+variable "webui_image" {
+  description = "Docker image for Open WebUI (e.g., ghcr.io/open-webui/open-webui:main or ECR path)"
+  type        = string
+  default     = "ghcr.io/open-webui/open-webui:main"
+}
+
+variable "ollama_container_port" {
+  description = "Container port for Ollama API"
+  type        = number
+  default     = 11434
+}
+
+variable "ecs_desired_count" {
+  description = "Desired number of tasks for the ECS service"
+  type        = number
+  default     = 2
+}
