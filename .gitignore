@@ -5,14 +5,16 @@
 crash.log
 crash.*.log
 *.tfplan
-*.tfvars
-*.tfvars.json
+*.secret.tfvars
+*.secret.tfvars.json
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
 .terraformrc
 terraform.rc
+terraform.tfvars
+*.tfvars.json
 
 # Docker
 # If you store docker-related build artifacts or data locally outside of named volumes
@@ -29,3 +31,8 @@ Thumbs.db
 
 # Documentation files
 docs/ 
+
+# LLMs
+models/
+
+backend.conf
