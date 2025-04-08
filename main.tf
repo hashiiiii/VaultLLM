@@ -16,11 +16,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "vaultllm-tfstate-619416722781-ap-northeast-1"
-    key            = "vaultllm/root/terraform.tfstate"
-    region         = "ap-northeast-1"
-    dynamodb_table = "vaultllm-tfstate-lock"
-    encrypt        = true
+    # Values will be provided via backend.conf during init
   }
 }
 
@@ -72,6 +68,16 @@ resource "aws_ecr_repository" "webui" {
 
   tags = {
     Name        = "${var.project_name}-webui-ecr"
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_route53_zone" "main" {
+  name = var.domain_name
+
+  tags = {
+    Name        = "${var.domain_name}-hosted-zone"
     Environment = var.environment
     Project     = var.project_name
   }
