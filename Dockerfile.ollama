@@ -1,0 +1,5 @@
+# image
+FROM ollama/ollama:latest
+
+# copy models
+COPY ./models /root/.ollama/models

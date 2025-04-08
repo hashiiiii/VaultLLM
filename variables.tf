@@ -31,7 +31,6 @@ variable "availability_zones" {
 variable "target_account_id" {
   description = "The AWS Account ID where resources will be deployed."
   type        = string
-  default     = "619416722781"
 }
 
 variable "webui_container_port" {
@@ -43,13 +42,13 @@ variable "webui_container_port" {
 variable "ecs_task_cpu" {
   description = "CPU units for the ECS task (e.g., 1024 for 1 vCPU)"
   type        = string
-  default     = "1024"
+  default     = "4096" # Increased based on local testing (4 vCPU)
 }
 
 variable "ecs_task_memory" {
   description = "Memory (MiB) for the ECS task (e.g., 2048 for 2GB)"
   type        = string
-  default     = "2048"
+  default     = "30720" # Increased based on local testing (30 GB)
 }
 
 variable "ollama_image" {
@@ -74,4 +73,9 @@ variable "ecs_desired_count" {
   description = "Desired number of tasks for the ECS service"
   type        = number
   default     = 2
+}
+
+variable "domain_name" {
+  description = "The domain name for the application (e.g., vaultllm.example.com)"
+  type        = string
 }
