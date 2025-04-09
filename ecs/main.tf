@@ -1,8 +1,40 @@
 resource "aws_ecs_cluster" "main" {
   name = local.ecs_cluster_name
 
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+
+  configuration {
+    execute_command_configuration {
+      logging = "DEFAULT"
+    }
+  }
+
   tags = {
-    Name = local.ecs_cluster_name
+    Name        = local.ecs_cluster_name
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_ecs_cluster_capacity_providers" "main" {
+  cluster_name = aws_ecs_cluster.main.name
+
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 1
+  }
+
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 0
+    base              = 0 # Set to 0 to minimize On-Demand usage
+    # If you need at least one task running at all times (even if Spot is interrupted),
+    # consider setting base = 1.
   }
 }
 
@@ -204,11 +236,25 @@ resource "aws_ecs_service" "main" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.main.arn
   desired_count   = var.desired_count
-  launch_type     = "FARGATE"
+  # launch_type = "FARGATE" # Removed as using capacity_provider_strategy
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 100 # Give full weight to Spot first
+  }
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 0  # Do not proactively place tasks on On-Demand
+    base              = 0  # Set to 0 to run fully on Spot if available.
+    # If Spot capacity is unavailable or tasks are interrupted, ECS *might* temporarily
+    # use On-Demand if absolutely necessary to meet desired_count (or if base > 0).
+    # To guarantee at least one On-Demand task for stability against Spot interruptions,
+    # set base = 1 here. This will increase costs slightly.
+  }
 
   network_configuration {
-    subnets         = var.public_subnet_ids
-    security_groups = [aws_security_group.ecs_task_sg.id]
+    subnets          = var.public_subnet_ids
+    security_groups  = [aws_security_group.ecs_task_sg.id]
     assign_public_ip = false
   }
 
@@ -218,12 +264,15 @@ resource "aws_ecs_service" "main" {
     container_port   = var.webui_container_port
   }
 
-  depends_on = [
-    aws_iam_role_policy_attachment.ecs_task_execution_role_policy,
-    aws_lb_listener.http,
-  ]
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
 
   tags = {
-    Name = local.ecs_service_name
+    Name        = local.ecs_service_name
+    Environment = var.environment
+    Project     = var.project_name
   }
+
+  depends_on = [aws_lb_listener.http]
 }
