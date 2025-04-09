@@ -46,6 +46,7 @@ variable "desired_count" {
 variable "assign_public_ip" {
   description = "Whether to assign public IPs to Fargate tasks (should be false with ALB)"
   type        = bool
+  default     = false
 }
 
 variable "vpc_id" {
@@ -76,4 +77,9 @@ variable "alb_arn" {
 variable "alb_security_group_id" {
   description = "ID of the ALB security group (used for ECS task SG Ingress)"
   type        = string
-} 
+}
+
+variable "environment" {
+  description = "The deployment environment name (e.g., development, staging, production)."
+  type        = string
+}

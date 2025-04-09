@@ -88,6 +88,7 @@ module "ecs" {
 
   aws_region              = var.aws_region
   project_name            = var.project_name
+  environment             = var.environment
   vpc_id                  = module.network.vpc_id
   public_subnet_ids       = module.network.public_subnet_ids
   alb_arn                 = module.network.alb_arn
