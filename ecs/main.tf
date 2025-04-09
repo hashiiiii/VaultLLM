@@ -144,16 +144,10 @@ resource "aws_ecs_task_definition" "main" {
       ]
       mountPoints = [
         {
-          sourceVolume  = "webui-data" # Mount the EFS volume defined above
-          containerPath = "/app/backend/data" # ASSUMPTION: Mount to WebUI's data path
+          sourceVolume  = "webui-data"
+          containerPath = var.webui_data_container_path
           readOnly      = false
         }
-        # Remove or keep ephemeral mount if needed, depending on webui_volume_name usage
-        # {
-        #   sourceVolume  = local.webui_volume_name 
-        #   containerPath = local.webui_volume_path
-        #   readOnly      = false
-        # }
       ]
       dependsOn = [
         {
@@ -186,10 +180,10 @@ resource "aws_lb_target_group" "webui" {
 
   health_check {
     enabled             = true
-    path                = "/"
+    path                = var.health_check_path
     port                = "traffic-port"
     protocol            = "HTTP"
-    matcher             = "200-399"
+    matcher             = var.health_check_matcher
     interval            = 30
     timeout             = 5
     healthy_threshold   = 3

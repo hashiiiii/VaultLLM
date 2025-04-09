@@ -46,7 +46,6 @@ variable "desired_count" {
 variable "assign_public_ip" {
   description = "Whether to assign public IPs to Fargate tasks (should be false with ALB)"
   type        = bool
-  default     = false
 }
 
 variable "vpc_id" {
@@ -86,5 +85,22 @@ variable "environment" {
 
 variable "efs_file_system_id" {
   description = "The ID of the EFS file system to mount for persistent data."
+  type        = string
+}
+
+# Add variable for WebUI data path inside the container
+variable "webui_data_container_path" {
+  description = "The path inside the WebUI container where persistent data (mounted from EFS) should be stored."
+  type        = string
+}
+
+# Add variables for health check configuration
+variable "health_check_path" {
+  description = "The destination for the health check request."
+  type        = string
+}
+
+variable "health_check_matcher" {
+  description = "The HTTP codes to use when checking for a successful response from a target."
   type        = string
 }

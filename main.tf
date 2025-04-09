@@ -104,6 +104,9 @@ module "ecs" {
   desired_count           = var.run_service ? var.ecs_desired_count : 0
   assign_public_ip        = false
   efs_file_system_id      = module.network.efs_file_system_id
+  webui_data_container_path = var.webui_data_container_path
+  health_check_path       = var.health_check_path
+  health_check_matcher    = var.health_check_matcher
 }
 
 resource "aws_security_group_rule" "alb_egress_to_ecs" {
@@ -128,8 +131,8 @@ resource "aws_security_group_rule" "ecs_ingress_from_alb" {
 
 resource "aws_security_group_rule" "ecs_to_efs_nfs" {
   type                     = "egress"
-  from_port                = 2049
-  to_port                  = 2049
+  from_port                = var.nfs_port
+  to_port                  = var.nfs_port
   protocol                 = "tcp"
   source_security_group_id = module.ecs.ecs_task_security_group_id
   security_group_id        = module.network.efs_security_group_id
@@ -138,8 +141,8 @@ resource "aws_security_group_rule" "ecs_to_efs_nfs" {
 
 resource "aws_security_group_rule" "efs_from_ecs_nfs" {
   type                     = "ingress"
-  from_port                = 2049
-  to_port                  = 2049
+  from_port                = var.nfs_port
+  to_port                  = var.nfs_port
   protocol                 = "tcp"
   source_security_group_id = module.ecs.ecs_task_security_group_id
   security_group_id        = module.network.efs_security_group_id
