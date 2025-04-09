@@ -36,4 +36,14 @@ output "alb_dns_name" {
 output "alb_zone_id" {
   description = "The canonical hosted zone ID of the load balancer (to be used in DNS aliasing)."
   value       = aws_lb.main.zone_id
+}
+
+output "efs_file_system_id" {
+  description = "The ID of the created EFS file system"
+  value       = aws_efs_file_system.main.id
+}
+
+output "efs_security_group_id" {
+  description = "The ID of the security group for the EFS file system"
+  value       = aws_security_group.efs_sg.id
 } 

@@ -85,10 +85,15 @@ resource "aws_ecs_task_definition" "main" {
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 
   volume {
-    name = local.ollama_volume_name
+    name = "webui-data"
+    efs_volume_configuration {
+      file_system_id = var.efs_file_system_id
+      root_directory = "/webui"
+      transit_encryption = "ENABLED"
+    }
   }
   volume {
-    name = local.webui_volume_name
+    name = local.ollama_volume_name
   }
 
   container_definitions = jsonencode([
@@ -139,10 +144,16 @@ resource "aws_ecs_task_definition" "main" {
       ]
       mountPoints = [
         {
-          sourceVolume  = local.webui_volume_name
-          containerPath = local.webui_volume_path
+          sourceVolume  = "webui-data" # Mount the EFS volume defined above
+          containerPath = "/app/backend/data" # ASSUMPTION: Mount to WebUI's data path
           readOnly      = false
         }
+        # Remove or keep ephemeral mount if needed, depending on webui_volume_name usage
+        # {
+        #   sourceVolume  = local.webui_volume_name 
+        #   containerPath = local.webui_volume_path
+        #   readOnly      = false
+        # }
       ]
       dependsOn = [
         {

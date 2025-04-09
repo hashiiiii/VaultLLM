@@ -180,4 +180,37 @@ resource "aws_lb" "main" {
   tags = {
     Name = "${var.project_name}-alb"
   }
+}
+
+resource "aws_efs_file_system" "main" {
+  creation_token = "${var.project_name}-efs"
+  performance_mode = "generalPurpose"
+  throughput_mode  = "bursting"
+  encrypted        = true
+
+  tags = {
+    Name = "${var.project_name}-efs"
+    Project = var.project_name
+  }
+}
+
+resource "aws_security_group" "efs_sg" {
+  name        = "${var.project_name}-efs-sg"
+  description = "Allow NFS traffic to EFS from ECS tasks"
+  vpc_id      = aws_vpc.main.id
+
+  tags = {
+    Name = "${var.project_name}-efs-sg"
+    Project = var.project_name
+  }
+}
+
+resource "aws_efs_mount_target" "main" {
+  count = length(aws_subnet.public)
+
+  file_system_id  = aws_efs_file_system.main.id
+  subnet_id       = aws_subnet.public[count.index].id
+  security_groups = [aws_security_group.efs_sg.id]
+
+  depends_on = [aws_efs_file_system.main]
 } 

@@ -101,8 +101,9 @@ module "ecs" {
   ollama_image            = aws_ecr_repository.ollama.repository_url
   webui_image             = aws_ecr_repository.webui.repository_url
   ollama_container_port   = var.ollama_container_port
-  desired_count           = var.ecs_desired_count
+  desired_count           = var.run_service ? var.ecs_desired_count : 0
   assign_public_ip        = false
+  efs_file_system_id      = module.network.efs_file_system_id
 }
 
 resource "aws_security_group_rule" "alb_egress_to_ecs" {
@@ -123,4 +124,24 @@ resource "aws_security_group_rule" "ecs_ingress_from_alb" {
   source_security_group_id = module.network.alb_sg_id
   security_group_id        = module.ecs.ecs_task_security_group_id
   description              = "Allow ECS inbound from ALB on WebUI port"
+}
+
+resource "aws_security_group_rule" "ecs_to_efs_nfs" {
+  type                     = "egress"
+  from_port                = 2049
+  to_port                  = 2049
+  protocol                 = "tcp"
+  source_security_group_id = module.ecs.ecs_task_security_group_id
+  security_group_id        = module.network.efs_security_group_id
+  description              = "Allow ECS tasks outbound to EFS on NFS port"
+}
+
+resource "aws_security_group_rule" "efs_from_ecs_nfs" {
+  type                     = "ingress"
+  from_port                = 2049
+  to_port                  = 2049
+  protocol                 = "tcp"
+  source_security_group_id = module.ecs.ecs_task_security_group_id
+  security_group_id        = module.network.efs_security_group_id
+  description              = "Allow EFS inbound from ECS tasks on NFS port"
 } 

@@ -70,9 +70,15 @@ variable "ollama_container_port" {
 }
 
 variable "ecs_desired_count" {
-  description = "Desired number of tasks for the ECS service"
+  description = "Desired number of tasks for the ECS service when running"
   type        = number
-  default     = 2
+  default     = 1 # Default to 1 task when service is running
+}
+
+variable "run_service" {
+  description = "Set to false to scale ECS service tasks to zero when not in use."
+  type        = bool
+  default     = true # Service runs by default
 }
 
 variable "domain_name" {

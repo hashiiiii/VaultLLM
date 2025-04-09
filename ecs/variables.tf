@@ -83,3 +83,8 @@ variable "environment" {
   description = "The deployment environment name (e.g., development, staging, production)."
   type        = string
 }
+
+variable "efs_file_system_id" {
+  description = "The ID of the EFS file system to mount for persistent data."
+  type        = string
+}
