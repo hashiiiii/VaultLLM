@@ -1,0 +1,23 @@
+# backend.conf.sample
+# ---------------------
+# This is a sample file for configuring the S3 backend.
+# Copy this file to backend.conf and fill in your actual S3 bucket and DynamoDB table details.
+# The backend.conf file is ignored by Git (.gitignore) and should NOT be committed.
+# This sample file SHOULD be committed to Git.
+
+# The S3 bucket where the Terraform state file (terraform.tfstate) will be stored.
+# This bucket must be created beforehand.
+bucket         = "<YOUR_TERRAFORM_STATE_BUCKET_NAME>"
+
+# The path within the S3 bucket where the state file will be stored.
+key            = "vaultllm/root/terraform.tfstate"
+
+# The AWS region where the S3 bucket and DynamoDB table exist.
+region         = "<YOUR_AWS_REGION>" # e.g., "ap-northeast-1"
+
+# The DynamoDB table used for state locking.
+# This table must be created beforehand with a primary key named "LockID" (Type: String).
+dynamodb_table = "<YOUR_TERRAFORM_LOCK_TABLE_NAME>"
+
+# Enable server-side encryption for the state file in S3.
+encrypt        = true 

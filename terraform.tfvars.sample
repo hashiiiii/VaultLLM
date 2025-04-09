@@ -1,0 +1,32 @@
+# terraform.tfvars.sample
+# ---------------------------
+# This is a sample file. Copy this file to terraform.tfvars and fill in your actual values.
+# The terraform.tfvars file is ignored by Git (.gitignore) and should NOT be committed.
+# This sample file SHOULD be committed to Git.
+
+# --- Root / Global Variables ---
+# domain_name               = "example.com"             # Your registered domain name
+# target_account_id         = "<YOUR_AWS_ACCOUNT_ID>"   # Your 12-digit AWS Account ID
+# aws_region                = "ap-northeast-1"          # Target AWS Region
+# project_name              = "vaultllm"                # Base name for resources
+# environment               = "development"             # Deployment environment (e.g., development, production)
+
+# --- Network Configuration (Passed to network module) ---
+# vpc_cidr                  = "10.0.0.0/16"             # VPC CIDR block
+# availability_zones        = ["ap-northeast-1a", "ap-northeast-1c"] # List of AZs to use
+
+# --- ECS Configuration (Passed to ecs module or used for ECS resources) ---
+# webui_container_port      = 8080                      # Port for Open WebUI container
+# ecs_task_cpu              = "4096"                    # Fargate Task CPU (e.g., "1024", "2048", "4096") - Review cost/performance
+# ecs_task_memory           = "30720"                   # Fargate Task Memory in MiB (e.g., "2048", "4096", "8192", "30720") - Review cost/performance
+# ollama_image              = "ollama/ollama:latest"      # Base Ollama image (will be overridden by ECR URL)
+# webui_image               = "ghcr.io/open-webui/open-webui:main" # Base WebUI image (will be overridden by ECR URL)
+# ollama_container_port     = 11434                     # Port for Ollama container API
+# ecs_desired_count         = 1                         # Number of tasks to run when service is active
+# run_service               = true                      # Set to false to stop the ECS service (scale tasks to 0)
+# webui_data_container_path = "/app/backend/data"       # Path inside WebUI container for EFS data mount (Verify this path!)
+# health_check_path         = "/"                       # Health check path for ALB Target Group
+# health_check_matcher      = "200-399"                 # Success codes for health check
+
+# --- Shared Infrastructure Variables ---
+# nfs_port                  = 2049                      # NFS port for EFS access 
