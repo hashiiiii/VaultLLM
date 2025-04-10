@@ -27,6 +27,3 @@
 # webui_data_container_path = "/app/backend/data"       # Path inside WebUI container for EFS data mount (Verify this path!)
 # health_check_path         = "/"                       # Health check path for ALB Target Group
 # health_check_matcher      = "200-399"                 # Success codes for health check
-
-# --- Shared Infrastructure Variables ---
-# nfs_port                  = 2049                      # NFS port for EFS access 
