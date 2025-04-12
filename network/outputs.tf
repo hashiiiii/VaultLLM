@@ -29,12 +29,12 @@ output "alb_arn" {
 }
 
 output "alb_dns_name" {
-  description = "The DNS name of the load balancer."
+  description = "DNS name of the Application Load Balancer"
   value       = aws_lb.main.dns_name
 }
 
 output "alb_zone_id" {
-  description = "The canonical hosted zone ID of the load balancer (to be used in DNS aliasing)."
+  description = "Canonical hosted zone ID of the Application Load Balancer"
   value       = aws_lb.main.zone_id
 }
 
@@ -46,4 +46,9 @@ output "efs_file_system_id" {
 output "efs_security_group_id" {
   description = "The ID of the security group for the EFS file system"
   value       = aws_security_group.efs_sg.id
+}
+
+output "public_subnet_azs" {
+  description = "Availability Zones for the public subnets"
+  value       = aws_subnet.public[*].availability_zone
 } 

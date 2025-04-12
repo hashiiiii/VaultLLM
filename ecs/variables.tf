@@ -104,3 +104,18 @@ variable "health_check_matcher" {
   description = "The HTTP codes to use when checking for a successful response from a target."
   type        = string
 }
+
+variable "availability_zones" {
+  description = "List of Availability Zones to deploy resources in"
+  type        = list(string)
+}
+
+variable "acm_certificate_arn" {
+  description = "ARN of the ACM certificate for the HTTPS listener"
+  type        = string
+}
+
+variable "efs_security_group_id" {
+  description = "Security Group ID of the EFS file system"
+  type        = string
+}

@@ -38,10 +38,6 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
   }
 }
 
-resource "aws_iam_service_linked_role" "ecs" {
-  aws_service_name = "ecs.amazonaws.com"
-}
-
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "${var.project_name}-ecs-task-execution-role"
 
@@ -195,25 +191,18 @@ resource "aws_lb_target_group" "webui" {
   }
 }
 
-# --- Listener for HTTP ---
-# TODO: Replace this HTTP listener with an HTTPS listener (Port 443)
-#       once a domain name and ACM certificate are configured.
-#       Alternatively, change this listener to redirect HTTP to HTTPS.
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = var.alb_arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.webui.arn
-  }
-}
-
 resource "aws_security_group" "ecs_task_sg" {
   name        = "${local.ecs_task_family}-sg"
   description = "Allow inbound traffic to ECS tasks and controlled outbound traffic"
   vpc_id      = var.vpc_id
+
+  ingress {
+    description     = "Allow traffic from ALB"
+    from_port       = var.webui_container_port
+    to_port         = var.webui_container_port
+    protocol        = "tcp"
+    security_groups = [var.alb_security_group_id]
+  }
 
   egress {
     description     = "Allow HTTPS to VPC Endpoint SG (SSM, ECR, Logs)"
@@ -230,6 +219,14 @@ resource "aws_security_group" "ecs_task_sg" {
     protocol    = "udp"
     cidr_blocks = [var.vpc_cidr_block]
   }
+
+  egress {
+    description     = "Allow NFS traffic to EFS"
+    from_port       = 2049
+    to_port         = 2049
+    protocol        = "tcp"
+    security_groups = [var.efs_security_group_id]
+   }
 
   tags = {
     Name = "${local.ecs_task_family}-sg"
@@ -278,6 +275,4 @@ resource "aws_ecs_service" "main" {
     Environment = var.environment
     Project     = var.project_name
   }
-
-  depends_on = [aws_lb_listener.http]
 }

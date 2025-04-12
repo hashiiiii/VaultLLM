@@ -78,6 +78,11 @@ variable "domain_name" {
   type        = string
 }
 
+variable "parent_domain_name" {
+  description = "The parent domain name for the Route 53 hosted zone (e.g., example.com)"
+  type        = string
+}
+
 variable "webui_data_container_path" {
   description = "The path inside the WebUI container where persistent data (mounted from EFS) should be stored."
   type        = string

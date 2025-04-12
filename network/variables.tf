@@ -21,4 +21,14 @@ variable "public_subnet_cidrs" {
 variable "project_name" {
   description = "Base name for resources to ensure uniqueness"
   type        = string
+}
+
+variable "acm_certificate_arn" {
+  description = "ARN of the ACM certificate for the HTTPS listener"
+  type        = string
+}
+
+variable "ecs_target_group_arn" {
+  description = "ARN of the ECS target group to forward traffic to"
+  type        = string
 } 

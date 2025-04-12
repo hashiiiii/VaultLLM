@@ -21,4 +21,9 @@ output "ecs_task_security_group_id" {
 output "cloudwatch_log_group_name" {
   description = "The name of the CloudWatch log group for tasks"
   value       = aws_cloudwatch_log_group.ecs_task_logs.name
+}
+
+output "target_group_arn" {
+  description = "ARN of the ECS service's primary target group"
+  value       = aws_lb_target_group.webui.arn
 } 
