@@ -154,16 +154,6 @@ resource "aws_security_group_rule" "alb_egress_to_ecs" {
   description              = "Allow ALB outbound to ECS Tasks on WebUI port"
 }
 
-resource "aws_security_group_rule" "ecs_ingress_from_alb" {
-  type                     = "ingress"
-  from_port                = var.webui_container_port
-  to_port                  = var.webui_container_port
-  protocol                 = "tcp"
-  source_security_group_id = module.network.alb_sg_id
-  security_group_id        = module.ecs.ecs_task_security_group_id
-  description              = "Allow ECS inbound from ALB on WebUI port"
-}
-
 resource "aws_security_group_rule" "ecs_to_efs_nfs" {
   type                     = "egress"
   from_port                = var.nfs_port

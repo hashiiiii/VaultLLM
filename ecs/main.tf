@@ -266,6 +266,10 @@ resource "aws_ecs_service" "main" {
     container_port   = var.webui_container_port
   }
 
+  depends_on = [
+    var.alb_arn
+  ]
+
   lifecycle {
     ignore_changes = [task_definition]
   }
